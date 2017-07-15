@@ -1,0 +1,7 @@
+[package]
+authors = ["Keegan McAllister <mcallister.keegan@gmail.com>"]
+name = "minrisc"
+version = "0.1.0"
+[dependencies]
+enum_primitive = "*"
+num = "*"
