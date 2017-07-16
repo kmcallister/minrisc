@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "cargo-clippy", allow(print_with_newline))]
+
 extern crate minrisc;
 
 use std::env;
