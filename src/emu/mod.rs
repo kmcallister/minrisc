@@ -113,10 +113,9 @@ impl Machine {
     }
 
     pub fn get_reg(&self, reg: Reg) -> u32 {
-        let num = reg.num() as usize;
-        match num {
+        match reg.num() as usize {
             0 => 0,
-            _ => self.iregs[num - 1],
+            n => self.iregs[n - 1],
         }
     }
 
@@ -141,19 +140,17 @@ impl Machine {
         self.set_reg(op.rd, res);
     }
 
-    fn branch<C>(&mut self, op: &BOperands, jumped: &mut bool, cond: C)
+    fn branch<C>(&mut self, op: &BOperands, next_pc: &mut u32, cond: C)
         where C: FnOnce(u32, u32) -> bool,
     {
         if cond(self.get_reg(op.rs1), self.get_reg(op.rs2)) {
-            self.pc = self.pc.wrapping_add(op.imm);
-            *jumped = true;
+            *next_pc = self.pc.wrapping_add(op.imm);
         }
     }
 
     pub fn step(&mut self) -> Result<StepOutcome> {
-        let next_pc = self.pc.wrapping_add(4);
+        let mut next_pc = self.pc.wrapping_add(4);
         let mut outcome = StepOutcome::Running;
-        let mut jumped = false;
 
         match decode::decode(self.load32(self.pc)?)? {
             ADDI(ref op) => self.op_imm(op, |x, y| x.wrapping_add(y)),
@@ -198,22 +195,20 @@ impl Machine {
 
             JAL(ref op) => {
                 self.set_reg(op.rd, next_pc);
-                self.pc = self.pc.wrapping_add(op.imm);
-                jumped = true;
+                next_pc = self.pc.wrapping_add(op.imm);
             }
 
             JALR(ref op) => {
                 self.set_reg(op.rd, next_pc);
-                self.pc = self.get_reg(op.rs1).wrapping_add(op.imm) & !1;
-                jumped = true;
+                next_pc = self.get_reg(op.rs1).wrapping_add(op.imm) & !1;
             }
 
-             BEQ(ref op) => self.branch(op, &mut jumped, |x, y| x == y),
-             BNE(ref op) => self.branch(op, &mut jumped, |x, y| x != y),
-             BLT(ref op) => self.branch(op, &mut jumped, |x, y| (x as i32) < (y as i32)),
-            BLTU(ref op) => self.branch(op, &mut jumped, |x, y| x < y),
-             BGE(ref op) => self.branch(op, &mut jumped, |x, y| (x as i32) >= (y as i32)),
-            BGEU(ref op) => self.branch(op, &mut jumped, |x, y| x >= y),
+             BEQ(ref op) => self.branch(op, &mut next_pc, |x, y| x == y),
+             BNE(ref op) => self.branch(op, &mut next_pc, |x, y| x != y),
+             BLT(ref op) => self.branch(op, &mut next_pc, |x, y| (x as i32) < (y as i32)),
+            BLTU(ref op) => self.branch(op, &mut next_pc, |x, y| x < y),
+             BGE(ref op) => self.branch(op, &mut next_pc, |x, y| (x as i32) >= (y as i32)),
+            BGEU(ref op) => self.branch(op, &mut next_pc, |x, y| x >= y),
 
             LW(ref op) => {
                 let addr = self.get_reg(op.rs1).wrapping_add(op.imm);
@@ -272,9 +267,7 @@ impl Machine {
             }
         }
 
-        if !jumped {
-            self.pc = next_pc;
-        }
+        self.pc = next_pc;
 
         Ok(outcome)
     }

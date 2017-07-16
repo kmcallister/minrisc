@@ -4,9 +4,6 @@ use {Error, Result};
 use super::{Reg, Funct, Imm};
 
 /// Halfway-decoded instruction.
-///
-/// This is decoded as far as the instruction format,
-/// but not the particular opcode.
 #[derive(Clone, Debug)]
 pub struct Instruction<T> {
     pub opcode: Opcode,

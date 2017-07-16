@@ -25,10 +25,8 @@ static FIB: &[u32] = &[
 ];
 
 fn main() {
-    let arg: u32 = match env::args().nth(1) {
-        None => panic!("Usage: ./fib <N>"),
-        Some(s) => s.parse().unwrap(),
-    };
+    let arg = env::args().nth(1).expect("Usage: ./fib <N>")
+        .parse().unwrap();
 
     let mut machine = Machine::with_memory(64*1024);
     machine.set_reg(Reg::a0(), arg);
@@ -45,14 +43,12 @@ fn main() {
         let current_inst_bits = machine.load32(machine.pc).unwrap();
         print!("{:?}\n\n", decode::decode(current_inst_bits).unwrap());
 
-        let res = machine.step();
-        match res {
-            e @ Err(_) => { e.unwrap(); }
-            Ok(StepOutcome::Syscall) => {
-                println!("Done! Result = {}", machine.get_reg(Reg::a0()));
-                break;
-            }
+        match machine.step() {
+            e @ Err(_) => drop(e.unwrap()),
+            Ok(StepOutcome::Syscall) => break,
             _ => (),
         }
     }
+
+    println!("Done! Result = {}", machine.get_reg(Reg::a0()));
 }
