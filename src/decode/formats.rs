@@ -11,7 +11,7 @@ use super::{Reg, Funct, Imm};
 pub struct Instruction<T> {
     pub opcode: Opcode,
     pub funct: Funct,
-    pub fields: T,
+    pub operands: T,
 }
 
 enum_from_primitive! {
@@ -22,14 +22,14 @@ enum_from_primitive! {
     #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub enum Opcode {
         Load    = 0b00_000_11,
-        MiscMem = 0b00_011_11,
+     // MiscMem = 0b00_011_11,
         OpImm   = 0b00_100_11,
         Auipc   = 0b00_101_11,
-        OpImm32 = 0b00_110_11,
+     // OpImm32 = 0b00_110_11,
         Store   = 0b01_000_11,
         Op      = 0b01_100_11,
         Lui     = 0b01_101_11,
-        Op32    = 0b01_110_11,
+     // Op32    = 0b01_110_11,
         Branch  = 0b11_000_11,
         Jalr    = 0b11_001_11,
         Jal     = 0b11_011_11,
@@ -38,49 +38,49 @@ enum_from_primitive! {
 }
 
 impl Opcode {
-    pub fn num(n: u32) -> Result<Opcode> {
-        match FromPrimitive::from_u32(n) {
+    pub fn from_inst(bits: u32) -> Result<Opcode> {
+        match FromPrimitive::from_u32(bits & 0b1111111) {
             Some(o) => Ok(o),
             None => Err(Error::BadOpcode),
         }
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ROperands {
     pub rd: Reg,
     pub rs1: Reg,
     pub rs2: Reg,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct IOperands {
     pub rd: Reg,
     pub rs1: Reg,
     pub imm: Imm,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct SOperands {
     pub rs1: Reg,
     pub rs2: Reg,
     pub imm: Imm,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct BOperands {
     pub rs1: Reg,
     pub rs2: Reg,
     pub imm: Imm,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct UOperands {
     pub rd: Reg,
     pub imm: Imm,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct JOperands {
     pub rd: Reg,
     pub imm: Imm,
@@ -93,11 +93,11 @@ pub type BInstruction = Instruction<BOperands>;
 pub type UInstruction = Instruction<UOperands>;
 pub type JInstruction = Instruction<JOperands>;
 
-fn inst<T>(bits: u32, funct: Funct, fields: T) -> Result<Instruction<T>> {
+fn inst<T>(bits: u32, funct: Funct, operands: T) -> Result<Instruction<T>> {
     Ok(Instruction {
-        opcode: Opcode::num(bits & 0b1111111)?,
+        opcode: Opcode::from_inst(bits)?,
         funct: funct,
-        fields: fields,
+        operands: operands,
     })
 }
 
@@ -175,10 +175,10 @@ pub fn decode_u(bits: u32) -> Result<UInstruction> {
 pub fn decode_j(bits: u32) -> Result<JInstruction> {
     inst(bits, 0, JOperands {
         rd: reg(bits >> 7)?,
-        imm: sign_extend(((bits >> 20) & 0b1111111111_0)
-                       | ((bits >> 9) & 0b1_0000000000_0)
-                       | (bits & 0b11111111_0_0000000000_0)
-                       | ((bits >> 11) & 0b1_00000000_0_0000000000_0),
+        imm: sign_extend((bits & 0b11111111_000000000000)
+                       | ((bits >> 9) & 0b100000000000)
+                       | ((bits >> 20) & 0b11111111110)
+                       | ((bits >> 11) & 0b1_00000000000000000000),
                        21),
     })
 }

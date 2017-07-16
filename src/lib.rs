@@ -7,6 +7,7 @@ pub mod decode;
 #[derive(Clone, Debug)]
 pub enum Error {
     BadOpcode,
+    BadFunct,
     BadRegister,
 }
 
